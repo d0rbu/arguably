@@ -5,23 +5,23 @@ import enum
 import inspect
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, TextIO, Union, Optional, List, Dict, Type, Tuple, Callable, Iterator, cast
+from typing import Any, Callable, Dict, Iterator, List, Optional, TextIO, Tuple, Type, Union, cast
 
-from ._argparse_extensions import HelpFormatter, FlagAction, ArgumentParser
-from ._commands import CommandDecoratorInfo, SubtypeDecoratorInfo, Command, CommandArg, InputMethod
-from ._modifiers import TupleModifier, ListModifier
+from ._argparse_extensions import ArgumentParser, FlagAction, HelpFormatter
+from ._commands import Command, CommandArg, CommandDecoratorInfo, InputMethod, SubtypeDecoratorInfo
+from ._modifiers import ListModifier, TupleModifier
 from ._util import (
-    logger,
-    log_args,
     ArguablyException,
-    normalize_name,
     NoDefault,
-    get_type_hints,
-    info_for_flags,
+    func_or_class_info,
     get_ancestors,
     get_parser_name,
+    get_type_hints,
+    info_for_flags,
+    log_args,
+    logger,
+    normalize_name,
     warn,
-    func_or_class_info,
 )
 
 

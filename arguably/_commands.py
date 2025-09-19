@@ -5,7 +5,7 @@ import enum
 import inspect
 import re
 from dataclasses import dataclass, field
-from typing import Callable, Any, Union, Optional, List, Dict, Tuple, cast, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
 
 from docstring_parser import parse as docparse
 
@@ -106,7 +106,7 @@ class CommandDecoratorInfo:
                 ds_matches = [ds_p for ds_p in docs.params if ds_p.arg_name.lstrip("*") == param.name]
                 if len(ds_matches) > 1:
                     raise util.ArguablyException(
-                        f"Function argument `{param.name}` in " f"`{processed_name}` has multiple docstring entries."
+                        f"Function argument `{param.name}` in `{processed_name}` has multiple docstring entries."
                     )
                 if len(ds_matches) == 1:
                     ds_info = ds_matches[0]
@@ -338,6 +338,15 @@ class CommandArg:
                     f"Function argument `{param.name}` in `{function_name}` is a variable-length tuple, which is "
                     f"not supported."
                 )
+
+            for type_arg in type_args:
+                # unions in tuples are not supported
+                if isinstance(type_arg, util.UnionType) or util.get_origin(type_arg) is Union:
+                    raise util.ArguablyException(
+                        f"Function argument `{param.name}` in `{function_name}` is a tuple with an unsupported "
+                        f"union type: {type_arg}"
+                    )
+
             value_type = type(None)
             modifiers.append(mods.TupleModifier(list(type_args)))
         elif origin is not None:
