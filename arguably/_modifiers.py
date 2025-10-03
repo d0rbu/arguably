@@ -96,6 +96,24 @@ class TupleModifier(CommandArgModifier):
 
 
 @dataclass(frozen=True)
+class EllipsisTupleModifier(CommandArgModifier):
+    """Sets up arguably variable-length tuple handling (e.g., tuple[float, ...])"""
+
+    element_type: type
+
+    def modify_arg_dict(self, command: cmds.Command, arg_: cmds.CommandArg, kwargs_dict: Dict[str, Any]) -> None:
+        if arg_.input_method is cmds.InputMethod.OPTIONAL_POSITIONAL:
+            kwargs_dict.update(nargs="?")
+        if arg_.input_method is not cmds.InputMethod.REQUIRED_POSITIONAL:
+            kwargs_dict.update(default=tuple())
+        if (arg_.default is util.NoDefault and arg_.input_method is cmds.InputMethod.OPTION) or RequiredModifier in [
+            type(mod) for mod in arg_.modifiers
+        ]:
+            kwargs_dict.update(required=True)
+        kwargs_dict.update(action=ap_ext.ListTupleBuilderAction, command_arg=arg_, type=self.element_type)
+
+
+@dataclass(frozen=True)
 class BuilderModifier(CommandArgModifier):
     """Sets up arguably builder"""
 
