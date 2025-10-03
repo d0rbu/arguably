@@ -5,6 +5,7 @@ from typing import Callable, Dict
 import pytest
 
 import arguably
+
 from . import get_and_clear_io, run_cli_and_manual
 
 
@@ -17,10 +18,10 @@ def test_help(iobuf: StringIO, scope_advanced: Dict[str, Callable]) -> None:
     cli = get_and_clear_io(iobuf)
 
     assert cli.startswith("usage: advanced [-h] [--loud] command ...\n")
-    assert "add" in cli and "adds a bunch of numbers together" in cli
-    assert "give" in cli and "give something" in cli
-    assert "hey-you (h)" in cli and "says hello to you" in cli
-    assert "--loud" in cli and "make it loud" in cli
+    assert "    add                     adds a bunch of numbers together" in cli
+    assert "    give                    give something" in cli
+    assert "    hey-you (h)             says hello to you" in cli
+    assert "  --loud                    make it loud (type: bool, default: False)" in cli
 
 
 def test_hey_you_help(iobuf: StringIO, scope_advanced: Dict[str, Callable]) -> None:
@@ -171,10 +172,6 @@ def test_mixed_tuple_help(iobuf: StringIO, scope_advanced: Dict[str, Callable]) 
 
     assert cli.startswith("usage: advanced mixed-tuple [-h] val,val,val\n")
     assert "  val,val,val  the values (type: (str,int,float))" in cli
-
-
-########################################################################################################################
-# ellipsis tuples
 
 
 def test_ellipsis_tuple_floats(iobuf: StringIO, scope_advanced: Dict[str, Callable]) -> None:
