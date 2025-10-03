@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, TextIO, Tuple,
 
 from ._argparse_extensions import ArgumentParser, FlagAction, HelpFormatter
 from ._commands import Command, CommandArg, CommandDecoratorInfo, InputMethod, SubtypeDecoratorInfo
-from ._modifiers import ListModifier, TupleModifier
+from ._modifiers import ListModifier, TupleModifier, EllipsisTupleModifier
 from ._util import (
     ArguablyException,
     NoDefault,
@@ -284,9 +284,13 @@ class _Context:
             if self._options.show_types:
                 list_modifiers = [m for m in arg_.modifiers if isinstance(m, ListModifier)]
                 tuple_modifiers = [m for m in arg_.modifiers if isinstance(m, TupleModifier)]
+                ellipsis_tuple_modifiers = [m for m in arg_.modifiers if isinstance(m, EllipsisTupleModifier)]
                 if len(tuple_modifiers) > 0:
                     assert len(tuple_modifiers) == 1
                     type_name = f"({','.join(t.__name__ for t in tuple_modifiers[0].tuple_arg)})"
+                elif len(ellipsis_tuple_modifiers) > 0:
+                    assert len(ellipsis_tuple_modifiers) == 1
+                    type_name = f"tuple[{ellipsis_tuple_modifiers[0].element_type.__name__},...]"
                 else:
                     type_name = arg_.arg_value_type.__name__
                 if len(list_modifiers) > 0:

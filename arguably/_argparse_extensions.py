@@ -209,6 +209,7 @@ class ListTupleBuilderAction(argparse.Action):
     Special action for arguably - handles lists, tuples, and builders. Designed to handle:
         * lists - List[int], List[str]
         * tuples - Tuple[int, int, int], Tuple[str, float, int]
+        * ellipsis tuples - tuple[float, ...], tuple[str, ...]
         * builders - Annotated[FooClass, arguably.arg.builder()]
         * list of tuples - List[Tuple[int, int]]
         * list of builders - Annotated[List[FooClass], arguably.arg.builder()]
@@ -226,11 +227,17 @@ class ListTupleBuilderAction(argparse.Action):
         # Check if we're handling a tuple (or a list of tuples)
         self._is_tuple = any(isinstance(m, mods.TupleModifier) for m in self._command_arg.modifiers)
 
+        # Check if we're handling a variable-length tuple (ellipsis tuple)
+        self._is_ellipsis_tuple = any(isinstance(m, mods.EllipsisTupleModifier) for m in self._command_arg.modifiers)
+
         # Check if we're handling a builder (or a list of builders)
         self._is_builder = any(isinstance(m, mods.BuilderModifier) for m in self._command_arg.modifiers)
 
         if self._is_tuple and self._is_builder:
             raise util.ArguablyException(f"{'/'.join(self.option_strings)} cannot use both tuple and builder")
+        
+        if self._is_ellipsis_tuple and self._is_builder:
+            raise util.ArguablyException(f"{'/'.join(self.option_strings)} cannot use both ellipsis tuple and builder")
 
         # Validate that type is callable
         check_type_list = self.type if isinstance(self.type, list) else [self.type]
@@ -269,6 +276,9 @@ class ListTupleBuilderAction(argparse.Action):
                 values.append(value)
             elif self._is_builder:
                 values.append(self._build_from_str_values(parser, option_string, split_value_str))
+            elif self._is_ellipsis_tuple:
+                assert isinstance(self._real_type, type)
+                values.extend(self._real_type(str_) for str_ in split_value_str)
             else:
                 assert self._is_list
                 assert isinstance(self._real_type, type)
@@ -279,6 +289,11 @@ class ListTupleBuilderAction(argparse.Action):
             items = getattr(namespace, self.dest, list())
             items = argparse._copy_items(items)  # type: ignore[attr-defined]
             items.extend(values)
+            setattr(namespace, self.dest, items)
+        elif self._is_ellipsis_tuple:
+            items = getattr(namespace, self.dest, tuple())
+            items = argparse._copy_items(items)  # type: ignore[attr-defined]
+            items = tuple(items) + tuple(values)
             setattr(namespace, self.dest, items)
         else:
             assert len(values) == 1
