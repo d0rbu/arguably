@@ -229,6 +229,14 @@ class ListTupleBuilderAction(argparse.Action):
 
         # Check if we're handling a variable-length tuple (ellipsis tuple)
         self._is_ellipsis_tuple = any(isinstance(m, mods.EllipsisTupleModifier) for m in self._command_arg.modifiers)
+        
+        # Check if we're handling a nested ellipsis tuple (e.g., tuple[tuple[int, ...], ...])
+        self._is_nested_ellipsis_tuple = False
+        if self._is_ellipsis_tuple:
+            ellipsis_modifier = next(m for m in self._command_arg.modifiers if isinstance(m, mods.EllipsisTupleModifier))
+            # Check if the element type is itself a generic tuple type
+            self._is_nested_ellipsis_tuple = hasattr(ellipsis_modifier.element_type, '__origin__') and \
+                                           util.get_origin(ellipsis_modifier.element_type) is tuple
 
         # Check if we're handling a builder (or a list of builders)
         self._is_builder = any(isinstance(m, mods.BuilderModifier) for m in self._command_arg.modifiers)
@@ -247,13 +255,42 @@ class ListTupleBuilderAction(argparse.Action):
                 raise util.ArguablyException(f"{'/'.join(self.option_strings)} type {type_name} is not callable")
 
         # Keep track of the real type and real nargs, lie to argparse to take in a single (comma-separated) string
-        assert isinstance(self.type, type) or isinstance(self.type, list)
-        self._real_type: Union[type, List[type]] = self.type
+        # Allow type, list, or generic types (like tuple[int, ...])
+        assert isinstance(self.type, type) or isinstance(self.type, list) or hasattr(self.type, '__origin__')
+        self._real_type: Union[type, List[type], Any] = self.type
         self.type = str
 
         # Make metavar comma-separated as well
         if isinstance(self.metavar, tuple):
             self.metavar = ",".join(self.metavar)
+
+    def _parse_nested_ellipsis_tuple(self, value_str: str) -> List[tuple]:
+        """Parse nested ellipsis tuple from string using semicolon as delimiter between inner tuples"""
+        from typing import get_args
+        
+        # Get the inner tuple type (e.g., tuple[int, ...] from tuple[tuple[int, ...], ...])
+        ellipsis_modifier = next(m for m in self._command_arg.modifiers if isinstance(m, mods.EllipsisTupleModifier))
+        inner_tuple_type = ellipsis_modifier.element_type
+        
+        # Get the base element type (e.g., int from tuple[int, ...])
+        inner_args = get_args(inner_tuple_type)
+        if len(inner_args) >= 1 and inner_args[1] is Ellipsis:
+            base_element_type = inner_args[0]
+        else:
+            raise util.ArguablyException(f"Unsupported nested tuple structure: {inner_tuple_type}")
+        
+        # Split by semicolon to get individual inner tuples
+        inner_tuple_strs = [s.strip() for s in value_str.split(';') if s.strip()]
+        
+        result = []
+        for inner_str in inner_tuple_strs:
+            # Split by comma and convert each element
+            elements = [util.unwrap_quotes(v.strip()) for v in inner_str.split(',') if v.strip()]
+            # Convert each element to the base type
+            converted_elements = tuple(base_element_type(elem) for elem in elements)
+            result.append(converted_elements)
+        
+        return result
 
     def __call__(
         self,
@@ -277,8 +314,15 @@ class ListTupleBuilderAction(argparse.Action):
             elif self._is_builder:
                 values.append(self._build_from_str_values(parser, option_string, split_value_str))
             elif self._is_ellipsis_tuple:
-                assert isinstance(self._real_type, type)
-                values.extend(self._real_type(str_) for str_ in split_value_str)
+                if self._is_nested_ellipsis_tuple:
+                    # Handle nested ellipsis tuples (e.g., tuple[tuple[int, ...], ...])
+                    # Parse using semicolon as delimiter between inner tuples
+                    nested_values = self._parse_nested_ellipsis_tuple(value_str)
+                    values.extend(nested_values)
+                else:
+                    # Handle regular ellipsis tuples
+                    assert isinstance(self._real_type, type)
+                    values.extend(self._real_type(str_) for str_ in split_value_str)
             else:
                 assert self._is_list
                 assert isinstance(self._real_type, type)
