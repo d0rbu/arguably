@@ -253,6 +253,34 @@ def scope_advanced(iobuf: StringIO) -> Dict[str, Callable]:
         iobuf.write(f"type: {type(values).__name__}\n")
 
     @arguably.command
+    def nested_tuple_ints(data: tuple[tuple[int, ...], ...]) -> None:
+        """
+        nested tuple of ints
+        :param data: nested int tuples
+        """
+        if not MANUAL:
+            assert arguably.is_target()
+        iobuf.write("> nested-tuple-ints\n")
+        iobuf.write(f"{data}\n")
+        iobuf.write(f"type: {type(data).__name__}\n")
+        for i, inner_tuple in enumerate(data):
+            iobuf.write(f"inner[{i}]: {inner_tuple} (type: {type(inner_tuple).__name__})\n")
+
+    @arguably.command
+    def nested_tuple_strings(*, values: tuple[tuple[str, ...], ...] = ()) -> None:
+        """
+        nested tuple of strings as option
+        :param values: nested string tuples
+        """
+        if not MANUAL:
+            assert arguably.is_target()
+        iobuf.write("> nested-tuple-strings\n")
+        iobuf.write(f"{values}\n")
+        iobuf.write(f"type: {type(values).__name__}\n")
+        for i, inner_tuple in enumerate(values):
+            iobuf.write(f"inner[{i}]: {inner_tuple} (type: {type(inner_tuple).__name__})\n")
+
+    @arguably.command
     def give(
         *,
         slowly: bool = False,
