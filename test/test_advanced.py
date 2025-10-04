@@ -277,8 +277,6 @@ def test_ellipsis_tuple_ints_help(iobuf: StringIO, scope_advanced: Dict[str, Cal
     assert "the int values (type: tuple[int,...], default: ())" in cli
 
 
-# nested tuples
-
 def test_nested_tuple_ints(iobuf: StringIO, scope_advanced: Dict[str, Callable]) -> None:
     # For now, let's define the expected syntax as semicolon-separated groups
     # e.g., "1,2,3;4,5;6,7,8" represents ((1,2,3), (4,5), (6,7,8))
