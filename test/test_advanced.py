@@ -277,7 +277,6 @@ def test_ellipsis_tuple_ints_help(iobuf: StringIO, scope_advanced: Dict[str, Cal
     assert "the int values (type: tuple[int,...], default: ())" in cli
 
 
-########################################################################################################################
 # nested tuples
 
 def test_nested_tuple_ints(iobuf: StringIO, scope_advanced: Dict[str, Callable]) -> None:
