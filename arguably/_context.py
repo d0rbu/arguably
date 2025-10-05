@@ -230,7 +230,7 @@ class _Context:
                     )
 
             # Validate `enum.Flag`
-            if issubclass(arg_.arg_value_type, enum.Flag):
+            if isinstance(arg_.arg_value_type, type) and issubclass(arg_.arg_value_type, enum.Flag):
                 if arg_.input_method.is_positional:
                     raise ArguablyException(
                         f"Function argument `{arg_.func_arg_name}` in `{cmd.name}` is both positional and an enum.Flag."
@@ -243,7 +243,7 @@ class _Context:
                     )
 
             # Validate `bool`
-            if issubclass(arg_.arg_value_type, bool):
+            if isinstance(arg_.arg_value_type, type) and issubclass(arg_.arg_value_type, bool):
                 if arg_.input_method is not InputMethod.OPTION or arg_.default is NoDefault:
                     raise ArguablyException(
                         f"Function argument `{arg_.func_arg_name}` in `{cmd.name}` is a `bool`. Boolean parameters "
@@ -257,7 +257,7 @@ class _Context:
 
         for arg_ in cmd.args:
             # Short-circuit, different path for enum.Flag. We add multiple options, one for each flag entry
-            if issubclass(arg_.arg_value_type, enum.Flag):
+            if isinstance(arg_.arg_value_type, type) and issubclass(arg_.arg_value_type, enum.Flag):
                 parser.set_defaults(**{arg_.cli_arg_name: arg_.default})
                 for entry in info_for_flags(arg_.cli_arg_name, arg_.arg_value_type):
                     argspec = log_args(
@@ -327,7 +327,7 @@ class _Context:
                     add_arg_kwargs.update(metavar=tuple(arg_.metavars))
 
             # Possible choices `choices`?
-            if issubclass(arg_.arg_value_type, enum.Enum):
+            if isinstance(arg_.arg_value_type, type) and issubclass(arg_.arg_value_type, enum.Enum):
                 mapping = self.set_up_enum(arg_.arg_value_type)
                 add_arg_kwargs.update(choices=[n for n in mapping])
 
@@ -339,7 +339,7 @@ class _Context:
                 add_arg_kwargs.update(dest=arg_.func_arg_name)
 
             # `bool` should be flags
-            if issubclass(arg_.arg_value_type, bool):
+            if isinstance(arg_.arg_value_type, type) and issubclass(arg_.arg_value_type, bool):
                 # Use `store_true` or `store_false` for bools
                 add_arg_kwargs.update(action="store_true" if arg_.default is False else "store_false")
                 if "type" in add_arg_kwargs:
