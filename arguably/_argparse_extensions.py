@@ -299,6 +299,11 @@ class ListTupleBuilderAction(argparse.Action):
         value_strs: Union[str, Sequence[Any], None],
         option_string: Optional[str] = None,
     ) -> None:
+        # If value_strs is None (no value provided for optional positional), don't process
+        # This allows our post-processing to detect and apply defaults
+        if value_strs is None:
+            return
+        
         value_strs = normalize_action_input(value_strs)
 
         # Split values and convert to self._real_type
@@ -330,14 +335,24 @@ class ListTupleBuilderAction(argparse.Action):
 
         # Set namespace variable
         if self._is_list:
-            items = getattr(namespace, self.dest, list())
-            items = argparse._copy_items(items)  # type: ignore[attr-defined]
-            items.extend(values)
+            items = getattr(namespace, self.dest, None)
+            # Only call _copy_items if items is not None, otherwise start fresh
+            # This prevents argparse._copy_items(None) from returning []
+            if items is not None:
+                items = argparse._copy_items(items)  # type: ignore[attr-defined]
+                items.extend(values)
+            else:
+                items = list(values)
             setattr(namespace, self.dest, items)
         elif self._is_ellipsis_tuple:
-            items = getattr(namespace, self.dest, tuple())
-            items = argparse._copy_items(items)  # type: ignore[attr-defined]
-            items = tuple(items) + tuple(values)
+            items = getattr(namespace, self.dest, None)
+            # Only call _copy_items if items is not None, otherwise start fresh
+            # This prevents argparse._copy_items(None) from returning []
+            if items is not None:
+                items = argparse._copy_items(items)  # type: ignore[attr-defined]
+                items = tuple(items) + tuple(values)
+            else:
+                items = tuple(values)
             setattr(namespace, self.dest, items)
         else:
             assert len(values) == 1
