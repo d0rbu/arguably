@@ -377,12 +377,42 @@ class _Context:
             )
             parser.add_argument(*argspec.args, **argspec.kwargs)
 
+    def _is_optional_type(self, type_hint: Any) -> bool:
+        """
+        Check if a type hint represents an Optional type (Union with None).
+        Returns True for types like Optional[List[str]], List[str] | None, etc.
+        """
+        if type_hint is None:
+            return False
+        
+        # Import here to avoid circular imports
+        from . import _util as util
+        
+        # Check for Union types (including | syntax in Python 3.10+)
+        if isinstance(type_hint, util.UnionType) or util.get_origin(type_hint) is Union:
+            args = util.get_args(type_hint)
+            # Check if None is one of the union members
+            return type(None) in args
+        
+        return False
+
     def _apply_list_tuple_defaults(self, parsed_args: Dict[str, Any]) -> None:
         """
         Apply actual defaults for list/tuple arguments that have value None.
         This is needed because we set default=None in argparse to avoid accumulating with defaults.
         """
         for cmd in self._commands.values():
+            # Get original type hints to check for Optional types
+            func = cmd.function.__init__ if isinstance(cmd.function, type) else cmd.function
+            try:
+                hints = util.get_type_hints(func, include_extras=True)
+            except NameError:
+                hints = {}
+            
+            # Fallback to __annotations__ if get_type_hints fails
+            if not hints:
+                hints = getattr(func, '__annotations__', {})
+            
             for arg in cmd.args:
                 # Check if this argument has a list or tuple modifier
                 has_list_tuple_modifier = any(
@@ -399,10 +429,12 @@ class _Context:
                         if arg.default is not NoDefault and arg.default is not None:
                             # Use the explicit non-None default (e.g., [2, 3, 5])
                             parsed_args[arg.func_arg_name] = arg.default
+                        elif arg.default is None and self._is_optional_type(hints.get(arg.func_arg_name)):
+                            # If the default is None and the type annotation allows None, preserve None
+                            parsed_args[arg.func_arg_name] = None
                         else:
-                            # For no default or None default, use empty list/tuple
-                            # This maintains backward compatibility - even if the user specified
-                            # Optional[List[str]] = None, we convert to [] instead of None
+                            # For no default or non-Optional None default, use empty list/tuple
+                            # This maintains backward compatibility
                             parsed_args[arg.func_arg_name] = empty_default
 
     def _build_subparser_tree(self, command_decorator_info: CommandDecoratorInfo) -> str:
