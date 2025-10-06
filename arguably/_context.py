@@ -377,6 +377,34 @@ class _Context:
             )
             parser.add_argument(*argspec.args, **argspec.kwargs)
 
+    def _apply_list_tuple_defaults(self, parsed_args: Dict[str, Any]) -> None:
+        """
+        Apply actual defaults for list/tuple arguments that have value None.
+        This is needed because we set default=None in argparse to avoid accumulating with defaults.
+        """
+        for cmd in self._commands.values():
+            for arg in cmd.args:
+                # Check if this argument has a list or tuple modifier
+                has_list_tuple_modifier = any(
+                    isinstance(m, (ListModifier, EllipsisTupleModifier)) for m in arg.modifiers
+                )
+                
+                if has_list_tuple_modifier and arg.func_arg_name in parsed_args:
+                    # If the value is None, we need to apply the default
+                    if parsed_args[arg.func_arg_name] is None:
+                        # Determine if it's a list or tuple for empty default
+                        is_tuple = any(isinstance(m, EllipsisTupleModifier) for m in arg.modifiers)
+                        empty_default = tuple() if is_tuple else list()
+                        
+                        if arg.default is not NoDefault and arg.default is not None:
+                            # Use the explicit non-None default (e.g., [2, 3, 5])
+                            parsed_args[arg.func_arg_name] = arg.default
+                        else:
+                            # For no default or None default, use empty list/tuple
+                            # This maintains backward compatibility - even if the user specified
+                            # Optional[List[str]] = None, we convert to [] instead of None
+                            parsed_args[arg.func_arg_name] = empty_default
+
     def _build_subparser_tree(self, command_decorator_info: CommandDecoratorInfo) -> str:
         """Builds up the subparser tree for a given `_CommandDecoratorInfo`. Inserts dummy entries to `self._parsers`
         and `self._commands` if necessary. Returns the name of the parent for this command."""
@@ -690,6 +718,9 @@ class _Context:
 
         # Make the magic happen
         parsed_args = vars(root_parser.parse_args())
+
+        # Apply defaults for list/tuple arguments that weren't provided
+        self._apply_list_tuple_defaults(parsed_args)
 
         # Resolve the command that needs to be called
         if only_one_cmd:

@@ -75,7 +75,9 @@ class ListModifier(CommandArgModifier):
         if arg_.input_method is cmds.InputMethod.OPTIONAL_POSITIONAL:
             kwargs_dict.update(nargs="?")
         if arg_.input_method is not cmds.InputMethod.REQUIRED_POSITIONAL:
-            kwargs_dict.update(default=list())
+            # Set default to None so that we can detect first call and avoid accumulating with default
+            # The real default will be applied after parsing if the value is still None
+            kwargs_dict.update(default=None)
         if (arg_.default is util.NoDefault and arg_.input_method is cmds.InputMethod.OPTION) or RequiredModifier in [
             type(mod) for mod in arg_.modifiers
         ]:
@@ -105,7 +107,9 @@ class EllipsisTupleModifier(CommandArgModifier):
         if arg_.input_method is cmds.InputMethod.OPTIONAL_POSITIONAL:
             kwargs_dict.update(nargs="?")
         if arg_.input_method is not cmds.InputMethod.REQUIRED_POSITIONAL:
-            kwargs_dict.update(default=tuple())
+            # Set default to None so that we can detect first call and avoid accumulating with default
+            # The real default will be applied after parsing if the value is still None
+            kwargs_dict.update(default=None)
         if (arg_.default is util.NoDefault and arg_.input_method is cmds.InputMethod.OPTION) or RequiredModifier in [
             type(mod) for mod in arg_.modifiers
         ]:
